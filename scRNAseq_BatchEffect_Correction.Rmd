@@ -1,0 +1,247 @@
+---
+title: "scRNAseq_Data-integration_and_Batch_Effect"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: scroll
+    source_code: embed
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+setwd("/Users/yasinkaymaz/Documents/Harvard_Informatics/Data_Explore/test_rsem/")
+library(Matrix)
+library(Seurat)
+library(dplyr)
+library(pheatmap)
+library(sva)
+library(d3heatmap)
+library(plotly)
+library(ggplot2)
+library(dygraphs)
+library(rbokeh)
+#library(highcharter)
+library(DT)
+library(threejs)
+#require(visNetwork, quietly = TRUE)
+
+BatchData <- as.data.frame(scan("batch2.txt",list(SampleName="",Batch="",RandomPheno=""),sep = "\t"))
+exp.data <- read.delim("Merged.Rsem.Expression_TPM.txt",row.names = NULL, header = TRUE)
+head(exp.data)
+rownames(exp.data) <- make.names(exp.data[,1],unique = TRUE)
+exp.data <- exp.data[,-c(1)]
+
+#Replace NAs in the matrix with 0.00s
+exp.data[is.na(exp.data)] <- 0.00
+
+#first remove the genes with 0 variance.
+var.data <- apply(exp.data, 1, var)
+dim(exp.data)
+exp.data.filtered <- exp.data[-which(var.data == 0 ),]
+dim(exp.data.filtered)
+
+anncolumns <- as.data.frame(BatchData$Batch)
+rownames(anncolumns) <- BatchData$SampleName
+rownames(BatchData) <- BatchData$SampleName
+
+```
+
+Inputs {.sidebar}
+-----------------------------------------------------------------------
+Batch 0 : 466 scRNAseq from Healthy human cortex (paired-end) (Dermanis et al. 2015, PNAS) NextSeq500
+
+Batch 1 : 4179 scRNAseq from prenatal human brain (single-end) (La Manno et al. 2016, Cell) HiSeq2000
+
+Both Fluidigm C1 system
+
+
+Row {data-width=600}
+-----------------------------------------------------------------------
+
+### Challenges of single cell RNAseq
+
+Dropout events in which some genes are measured at high levels in some cells while other cells do not have any expression of those genes.
+Batch effect as the source of technical variation. 
+
+Cell culturing, collection, and sequencing method differences create issues between experiments.
+
+Cell to cell variation among the same cell types caused by cell size, cycle state, etc. can interfere with the variation caused by different type of cells. 
+
+We started to realize that cell are not transcriptomically distinct between each other with discrete boundaries. They rather show separation with continuous fuzzy boundaries.
+
+### Challenges with Integration of different types of single-cell RNAseq data:
+
+Single-cell method: Fluidigm C1, DropSeq, etc.
+
+Sequencing read: Single-end, paired-end, read length
+
+Cell types: Brain cells, all neuron types and supporting cells, hematopoietic cells, cancer cells, etc.
+
+Cell collection time points can be either included in the experimental design or happens to be an unwanted batch effect.
+Cell collection method which usually involves extraction of cells from the origin/organism and dissociation from each other in an buffer suspension.
+
+### Computational Challenges:
+
+Scale of the data requires parallel processing with computing clusters. Analysis pipelines need to be optimized for thousands of sequencing data to give results in reasonable times.
+
+Multi dimensional structure of the data needs to be handled properly in order to extract meaningful information out of it such as distinct cell types with unique transcriptional program, or cells with insufficient data which need to be excluded from the analysis. 
+Variety of analysis tools which have been developed for fairly specific duties and need to be used cautiously by paying extra attention to the algorithm behind and to the tune up parameters.
+
+ERCC spike in control RNAs have been used in scRNAseq experiments to control for technical variations. However; the major caveat of this approach is that spike in RNAs are not expose to all of the experimental steps in single cell RNAseq experiment. This makes spike in technique less reliable in term of accounting for technical variations. 
+
+Row {data-width=200}
+-----------------------------------------------------------------------
+### General Analysis Overview
+
+![figure 1](/Users/yasinkaymaz/Desktop/scRNAseq.png)
+
+
+
+Row {data-width=650}
+-----------------------------------------------------------------------
+
+### Reference Genome and gene Annotations
+
+Reference Genome and gene Annotations:
+
+GRCh38/hg38.fa --> Human Genome version 38
+
+GRCh38/Homo_sapiens.GRCh38.86.gtf --> Gencode version 25
+
+### RSEM - STAR Expression Quantification
+
+RSEM-1.3.0
+
+STAR-2.5.2
+
+rsem-calculate-expression -p \$nt $Pairness \
+--star --star-path ~/biotools/STAR-2.5.2b/bin/Linux_x86_64/ \
+--estimate-rspd \
+--strandedness \$Strandedness \
+--append-names \
+--star-gzipped-read-file \
+--no-bam-output \
+--single-cell-prior \
+\$Fastq1 $Fastq2 \
+\$LABspace/References/GRCh38/RSEM_star/GRCh38_ref scRNAseq_paired_\$SAMPLENAME
+
+
+Row {data-width=650}
+-----------------------------------------------------------------------
+### Non-zero gene count distributions in each Batch cells. (Dermanis et al. - Batch 0 vs La Manno et al. Batch 1)
+
+```{r}
+#Check count distributions:
+GeneValues <- as.data.frame(colSums(exp.data.filtered!=0.00))
+GeneValues <- cbind(anncolumns, GeneValues)
+colnames(GeneValues) <- c("Batch","NonzeroGenes")
+```
+
+```{r}
+p <- ggplot(data=GeneValues,aes(x=Batch,y=NonzeroGenes, color=Batch),ylab="Number of non-zero Genes") + geom_violin() + geom_jitter()
+ggplotly(p,originalData=TRUE)
+```
+
+> This distribution shows a clear batch difference between these two datasets. This could be due to pairedness of the sequencing reads.
+
+
+Row {data-width=650}
+-----------------------------------------------------------------------
+
+### Cell-to-Cell Correlation Before Batch Correction
+
+```{r}
+pheatmap(cor(exp.data.filtered),annotation_col = anncolumns, show_colnames = FALSE, show_rownames = FALSE)
+```
+
+
+### PCA Before Batch Correction
+
+```{r, include=FALSE}
+# scNeuron <- NULL
+# scNeuron <- CreateSeuratObject(raw.data = combat_data, min.cells = 50, project = "NeuronalCells")
+# scNeuron <- NormalizeData(object = scNeuron)
+# scNeuron <- FindVariableGenes(object = scNeuron, x.low.cutoff = 0, y.cutoff = 1)
+# length(x = scNeuron@var.genes)
+# scNeuron <- ScaleData(object = scNeuron, genes.use = scNeuron@var.genes, model.use = "negbinom")
+# 
+# scNeuron <- RunPCA(object = scNeuron, pc.genes = scNeuron@var.genes, pcs.compute = 20, pcs.print = 1:20, weight.by.var = FALSE)
+
+tvsd <- t(exp.data.filtered)
+pca_proc <- prcomp(tvsd,scale=TRUE,center=TRUE)
+summary(pca_proc)
+plotData = as.data.frame(BatchData[colnames(exp.data.filtered),c("Batch")])
+colnames(plotData) <- c("Batch")
+plotData$PC1 <- pca_proc$x[,1]
+plotData$PC2 <- pca_proc$x[,2]
+plotData$PC3 <- pca_proc$x[,3]
+plotData$PC4 <- pca_proc$x[,4]
+plotData$PC5 <- pca_proc$x[,5]
+plotData$PC6 <- pca_proc$x[,6]
+```
+```{r}
+p<-ggplot(data=plotData, aes(x=PC1,y=PC2,color=Batch)) + geom_point(size=1) +scale_x_continuous(limits = c(-50, 50))+scale_y_continuous(limits = c(-50, 50))
+
+ggplotly(p,originalData=TRUE)
+```
+#```{r}
+#scatterplot3js(plotData$PC1,plotData$PC2,plotData$PC3,color=c('red','blue','green') )
+#```
+
+
+Row {data-width=650}
+-----------------------------------------------------------------------
+
+### Cell-to-Cell Correlation After Batch Correction
+
+```{r,include=FALSE}
+
+batch = BatchData$Batch
+modcombat = model.matrix(~1, data=BatchData)
+combat_data = ComBat(dat=exp.data.filtered, batch=batch, mod=modcombat,par.prior=TRUE, prior.plots=FALSE)
+```
+```{r}
+pheatmap(cor(combat_data),annotation_col = anncolumns, show_colnames = FALSE, show_rownames = FALSE )
+```
+
+
+### PCA after Batch Correction
+
+```{r, include=FALSE}
+# scNeuron <- NULL
+# scNeuron <- CreateSeuratObject(raw.data = combat_data, min.cells = 50, project = "NeuronalCells")
+# scNeuron <- NormalizeData(object = scNeuron)
+# scNeuron <- FindVariableGenes(object = scNeuron, x.low.cutoff = 0, y.cutoff = 1)
+# length(x = scNeuron@var.genes)
+# scNeuron <- ScaleData(object = scNeuron, genes.use = scNeuron@var.genes, model.use = "negbinom")
+# 
+# scNeuron <- RunPCA(object = scNeuron, pc.genes = scNeuron@var.genes, pcs.compute = 20, pcs.print = 1:20, weight.by.var = FALSE)
+
+tvsd <- t(combat_data)
+pca_proc <- prcomp(tvsd,scale=TRUE,center=TRUE)
+summary(pca_proc)
+plotData = as.data.frame(BatchData[colnames(combat_data),c("Batch")])
+colnames(plotData) <- c("Batch")
+plotData$PC1 <- pca_proc$x[,1]
+plotData$PC2 <- pca_proc$x[,2]
+plotData$PC3 <- pca_proc$x[,3]
+plotData$PC4 <- pca_proc$x[,4]
+plotData$PC5 <- pca_proc$x[,5]
+plotData$PC6 <- pca_proc$x[,6]
+```
+```{r}
+#PCAPlot(object = scNeuron, dim.1 = 1, dim.2 = 2)
+p<-ggplot(data=plotData, aes(x=PC1,y=PC2,color=Batch)) + geom_point(size=1) +scale_x_continuous(limits = c(-12, 5))+scale_y_continuous(limits = c(-10, 20))
+
+ggplotly(p,originalData=TRUE)
+```
+
+
+Row {data-width=200}
+-----------------------------------------------------------------------
+### After Combat tSNE plot of cells
+
+![figure 1](/Users/yasinkaymaz/Documents/Harvard_Informatics/Data_Explore/test_rsem/AfterCombat_tSNE.png)
+
+
+
