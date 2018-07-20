@@ -2,7 +2,7 @@
 srcdir <- dirname(sys.frame(1)$ofile)
 print(srcdir)
 
-RunGSEAforClusters <- function(SeuratObj, Cond1, Cond2, GeneSet='MousePath_Co-expression', outputDir=getwd(), ...){
+RunGSEAforClusters <- function(SeuratObj, Cond1, Cond2, GeneSet='MousePath_GO_gmt.gmt', outputDir=getwd(), ...){
   
   SeuratObj = SetAllIdent(SeuratObj, id = 'cluster.states')
   clusters = sort(unique(as.numeric(SeuratObj@meta.data$tree.ident)))
@@ -67,14 +67,14 @@ RunGSEA <- function(InputPrefix, GeneSet, outputDir=getwd(), ...){
   data(mm_metabolic)
   data(mm_pathway)
   
-  doc.STRING= paste(InputPrefix,GeneSet, sep="_")
+  doc.STRING= paste(InputPrefix,substr(GeneSet,1,nchar(GeneSet)-4), sep="_")
   print(doc.STRING)
   print(InputPrefix)
   
   GSEA(   # Input/Output Files :-------------------------------------------
           input.ds =  paste(outputDir,"/",InputPrefix,".gct",sep = ""),           # Input gene expression Affy dataset file in RES or GCT format
           input.cls = paste(outputDir,"/",InputPrefix,".cls",sep = ""),           # Input class vector (phenotype) file in CLS format
-          gs.db =   paste(srcdir,"/../GeneSetDatabases/MousePath_Co-expression_subset100.gmt",sep=""),         # Gene set database in GMT format
+          gs.db =   paste(srcdir,"/../GeneSetDatabases/",GeneSet,sep=""),         # Gene set database in GMT format
           output.directory      = paste(outputDir,"/",sep = ""),        # Directory where to store output and results (default: "")
           #  Program parameters :-------------------------------------------------------------------------------------------------------------------------
           doc.string            = doc.STRING,   # Documentation string used as a prefix to name result files (default: "GSEA.analysis")
