@@ -1,0 +1,25 @@
+Run of GSEA on  2018-07-17 14:37:11
+input.ds= test/N_vs_EOS/N_vs_EOS.gct
+input.cls= test/N_vs_EOS/N_vs_EOS.cls
+gene.ann = 
+gs.db= GeneSetDatabases/c7.all.v5.0.symbols.gmt
+gs.ann = 
+output.directory = test/N_vs_EOS/
+doc.string =  N_vs_EOS_NA_NA_NA
+non.interactive.run = FALSE
+reshuffling.type = sample.labels
+nperm = 1000
+weighted.score.type = 1
+nom.p.val.threshold = -1
+fwer.p.val.threshold = -1
+fdr.q.val.threshold = 0.25
+topgs = 20
+adjust.FDR.q.val = FALSE
+gs.size.threshold.min = 15
+gs.size.threshold.max = 500
+reverse.sign = FALSE
+preproc.type = 0
+random.seed = 3338
+perm.type = 0
+fraction = 1
+replace = FALSE

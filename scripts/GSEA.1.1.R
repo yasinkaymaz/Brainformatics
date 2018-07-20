@@ -1027,7 +1027,9 @@ write(paste("replace =", replace, sep=" "), file=filename, append=T)
           temp.size.G[i] <- length(unlist(strsplit(temp[[i]], "\t"))) - 2
       }
 
-      max.size.G <- max(temp.size.G)      
+      max.size.G <- max(temp.size.G)
+	print(max.size.G)
+	print(max.Ng)      
       gs <- matrix(rep("null", max.Ng*max.size.G), nrow=max.Ng, ncol= max.size.G)
       temp.names <- vector(length = max.Ng, mode = "character")
       temp.desc <- vector(length = max.Ng, mode = "character")
