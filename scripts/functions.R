@@ -61,12 +61,7 @@ CreateGSEAinput <- function(SeuratObj, Cond1, Cond2, outputDir=getwd(), clusteri
 RunGSEA <- function(InputPrefix, GeneSet, outputDir=getwd(), ...){
   GSEA.program.location <- paste(srcdir,"/GSEA.1.1.R",sep="")
   source(GSEA.program.location, verbose=F, max.deparse.length=9999)
-  library(gskb)
-  data(mm_miRNA)
-  data(mm_GO)
-  data(mm_metabolic)
-  data(mm_pathway)
-  
+
   doc.STRING= paste(InputPrefix,substr(GeneSet,1,nchar(GeneSet)-4), sep="_")
   print(doc.STRING)
   print(InputPrefix)
