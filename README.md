@@ -1,6 +1,9 @@
 # Brainformatics
 This Repository is the collection of developing tools and programs to be potentially used for analyzing single cell NGS data in several Brain Projects at Harvard University.
 
+```
+git clone https://github.com/yasinkaymaz/Brainformatics.git
+```
 
 ### Running GSEA on scRNAseq clusters.
 This function takes an Seurat object which stores normalized gene expression for every cell in the dataset. Creates required input files, .gct and .cls, out of expression matrix. Then, runs GSEA on between the given conditions for each cluster against each geneset provided.
