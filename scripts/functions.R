@@ -77,8 +77,8 @@ RunGSEA <- function(InputPrefix, GeneSet, outputDir=getwd(), ...){
           reshuffling.type      = "sample.labels", # Type of permutation reshuffling: "sample.labels" or "gene.labels" (default: "sample.labels" 
           nperm                 = 1000,            # Number of random permutations (default: 1000)
           weighted.score.type   =  1,              # Enrichment correlation-based weighting: 0=no weight (KS), 1= weigthed, 2 = over-weigthed (default: 1)
-          nom.p.val.threshold   = -1,              # Significance threshold for nominal p-vals for gene sets (default: -1, no thres)
-          fwer.p.val.threshold  = -1,              # Significance threshold for FWER p-vals for gene sets (default: -1, no thres)
+          nom.p.val.threshold   = 0.001,              # Significance threshold for nominal p-vals for gene sets (default: -1, no thres)
+          fwer.p.val.threshold  = 0.001,              # Significance threshold for FWER p-vals for gene sets (default: -1, no thres)
           fdr.q.val.threshold   = 0.25,            # Significance threshold for FDR q-vals for gene sets (default: 0.25)
           topgs                 = 20,              # Besides those passing test, number of top scoring gene sets used for detailed reports (default: 10)
           adjust.FDR.q.val      = F,               # Adjust the FDR q-vals (default: F)
