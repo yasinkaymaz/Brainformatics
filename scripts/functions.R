@@ -3,18 +3,18 @@ srcdir <- dirname(sys.frame(1)$ofile)
 print(srcdir)
 
 RunGSEAforClusters <- function(SeuratObj, Cond1, Cond2, GeneSet='MousePath_GO_gmt.gmt', outputDir=getwd(), ...){
-  
+
   SeuratObj = SetAllIdent(SeuratObj, id = 'cluster.states')
   clusters = sort(unique(as.numeric(SeuratObj@meta.data$tree.ident)))
   pb <- txtProgressBar(min = 0, max = length(clusters), style = 3)
-  
+
   for (i in clusters) {
     #Create GSEA input files
     filePrefix= paste(Cond1,Cond2,"Cluster",i,"ExpMatrix",sep="_")
     CreateGSEAinput(SeuratObj = SeuratObj, Cond1 = Cond1, Cond2 = Cond2, clusterid = i, filePrefix = filePrefix, ...)
-    #Run GSEA for the cluster i comparing cells from Cond1 and Cond2    
+    #Run GSEA for the cluster i comparing cells from Cond1 and Cond2
     RunGSEA(InputPrefix = filePrefix, GeneSet=GeneSet, ...)
-    
+
     setTxtProgressBar(pb,i)
     print(c('GSEA with Cluster', i,' is completed.'))
   }
@@ -22,7 +22,7 @@ RunGSEAforClusters <- function(SeuratObj, Cond1, Cond2, GeneSet='MousePath_GO_gm
 
 
 CreateGSEAinput <- function(SeuratObj, Cond1, Cond2, outputDir=getwd(), clusterid, filePrefix, ...){
-  
+
   ident.1 = paste(Cond1,"-",clusterid, sep = '')
   ident.2 = paste(Cond2,'-',clusterid, sep = '')
   #Subset expression data into cells from two conditions:
@@ -36,14 +36,14 @@ CreateGSEAinput <- function(SeuratObj, Cond1, Cond2, outputDir=getwd(), clusteri
   new.df <- cbind(Description="",tpm)
   #get the matrix dimensions
   dimensions <- dim(tpm)
-  
+
   #Create a GCT file: for details: https://software.broadinstitute.org/cancer/software/genepattern/file-formats-guide#GCT
   header1="#1.2"
   header2=paste(dimensions[1],dimensions[2],sep="\t")
   write.table(header1, file=paste(filePrefix,".gct",sep=""), sep="\t", quote=FALSE,col.names=FALSE,row.names=FALSE   )
   write.table(header2, file=paste(filePrefix,".gct",sep=""), sep="\t", quote=FALSE,col.names=FALSE,row.names=FALSE , append=TRUE  )
   write.table(new.df, file=paste(filePrefix,".gct",sep=""), sep="\t", quote=FALSE, append=TRUE,col.names=NA   )
-  
+
   #create a CLS file: for details: https://software.broadinstitute.org/cancer/software/genepattern/file-formats-guide#CLS
   conditions = c(ident.1,ident.2)
   header=paste(dimensions[2], "2", "1",sep=" ")
@@ -65,7 +65,7 @@ RunGSEA <- function(InputPrefix, GeneSet, outputDir=getwd(), ...){
   doc.STRING= paste(InputPrefix,substr(GeneSet,1,nchar(GeneSet)-4), sep="_")
   print(doc.STRING)
   print(InputPrefix)
-  
+
   GSEA(   # Input/Output Files :-------------------------------------------
           input.ds =  paste(outputDir,"/",InputPrefix,".gct",sep = ""),           # Input gene expression Affy dataset file in RES or GCT format
           input.cls = paste(outputDir,"/",InputPrefix,".cls",sep = ""),           # Input class vector (phenotype) file in CLS format
@@ -74,13 +74,13 @@ RunGSEA <- function(InputPrefix, GeneSet, outputDir=getwd(), ...){
           #  Program parameters :-------------------------------------------------------------------------------------------------------------------------
           doc.string            = doc.STRING,   # Documentation string used as a prefix to name result files (default: "GSEA.analysis")
           non.interactive.run   = F,               # Run in interactive (i.e. R GUI) or batch (R command line) mode (default: F)
-          reshuffling.type      = "sample.labels", # Type of permutation reshuffling: "sample.labels" or "gene.labels" (default: "sample.labels" 
+          reshuffling.type      = "sample.labels", # Type of permutation reshuffling: "sample.labels" or "gene.labels" (default: "sample.labels"
           nperm                 = 1000,            # Number of random permutations (default: 1000)
           weighted.score.type   =  1,              # Enrichment correlation-based weighting: 0=no weight (KS), 1= weigthed, 2 = over-weigthed (default: 1)
           nom.p.val.threshold   = 0.001,              # Significance threshold for nominal p-vals for gene sets (default: -1, no thres)
           fwer.p.val.threshold  = 0.001,              # Significance threshold for FWER p-vals for gene sets (default: -1, no thres)
           fdr.q.val.threshold   = 0.25,            # Significance threshold for FDR q-vals for gene sets (default: 0.25)
-          topgs                 = 0,              # Besides those passing test, number of top scoring gene sets used for detailed reports (default: 10)
+          topgs                 = 20,              # Besides those passing test, number of top scoring gene sets used for detailed reports (default: 10)
           adjust.FDR.q.val      = F,               # Adjust the FDR q-vals (default: F)
           gs.size.threshold.min = 15,              # Minimum size (in genes) for database gene sets to be considered (default: 25)
           gs.size.threshold.max = 500,             # Maximum size (in genes) for database gene sets to be considered (default: 500)
@@ -94,6 +94,5 @@ RunGSEA <- function(InputPrefix, GeneSet, outputDir=getwd(), ...){
           OLD.GSEA              = F,               # Use original (old) version of GSEA (default: F)
           use.fast.enrichment.routine = T          # Use faster routine to compute enrichment for random permutations (default: T)
   )
-  
-}
 
+}
