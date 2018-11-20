@@ -2,10 +2,11 @@
 srcdir <- dirname(sys.frame(1)$ofile)
 print(srcdir)
 
-RunGSEAforClusters <- function(SeuratObj, Cond1, Cond2, GeneSet='MousePath_GO_gmt.gmt', outputDir=getwd(), ...){
+RunGSEAforClusters <- function(SeuratObj, Cond1, Cond2, Clusteridlist, GeneSet='MousePath_GO_gmt.gmt', outputDir=getwd(), ...){
 
-  SeuratObj = SetAllIdent(SeuratObj, id = 'cluster.states')
-  clusters = sort(unique(as.numeric(SeuratObj@meta.data$tree.ident)))
+  #SeuratObj = SetAllIdent(SeuratObj, id = 'cluster.states')
+  #clusters = sort(unique(as.numeric(SeuratObj@meta.data$tree.ident)))
+  clusters = Clusteridlist
   pb <- txtProgressBar(min = 0, max = length(clusters), style = 3)
 
   for (i in clusters) {
@@ -19,6 +20,33 @@ RunGSEAforClusters <- function(SeuratObj, Cond1, Cond2, GeneSet='MousePath_GO_gm
     print(c('GSEA with Cluster', i,' is completed.'))
   }
 }
+
+RunDGEA <- function(SeuratObj, Cond1, Cond2, Clusteridlist, outputDir=getwd(), ...){
+  #First install MAST:
+  #install.packages("BiocManager")
+  #BiocManager::install("MAST")
+  #library(scater)
+  library(dplyr)
+  SeuratObj = SetAllIdent(SeuratObj, id = 'cluster.states')
+  DEGs = list()
+  #clusters = sort(unique(as.numeric(SeuratObj@meta.data$tree.ident)))
+  clusters = Clusteridlist
+  pb <- txtProgressBar(min = 0, max = length(clusters), style = 3)
+  for (i in clusters) {
+    ident.1 = paste(Cond1,"-",i, sep = '')
+    ident.2 = paste(Cond2,'-',i, sep = '')
+    a =FindMarkers(SeuratObj, ident.1 = ident.1, ident.2 = ident.2, test.use = 'MAST', only.pos = FALSE, latent.vars = c('nUMI', 'percent.mito'), logfc.threshold = 0.1, min.pct = 0.05)
+    a$gene = rownames(a)
+    a$cluster = paste(i,sep = '')
+    DEGs = bind_rows(DEGs,a)
+    setTxtProgressBar(pb,i)
+    print(c('Finished with Cluster', i))
+  }
+  save(DEGs, file = paste(outputDir,"/",Cond1,"-",Cond2,"DEGs.Rdata",sep = ""))
+  #unloadNamespace(ns = 'scater')
+  return(DEGs)
+}
+
 
 
 CreateGSEAinput <- function(SeuratObj, Cond1, Cond2, outputDir=getwd(), clusterid, filePrefix, ...){
@@ -96,3 +124,59 @@ RunGSEA <- function(InputPrefix, GeneSet, outputDir=getwd(), ...){
   )
 
 }
+
+
+SummarizeGSEAoutputs <- function(GSEAoutputDir="./"){
+  #This function returns the table of all Enrichment results with corrected p-values.
+  library(tidyverse)
+  setwd(GSEAoutputDir)
+  
+  majorSummaryTable <- NULL
+  GSreportsTable <- NULL
+  mySumFiles <- list.files(pattern="*SUMMARY.RESULTS.REPORT*")
+
+  for (i in 1:length(mySumFiles)){
+
+    sumTable <- read.delim(mySumFiles[i]) %>% as.tibble() %>% add_column(Comparison=strsplit(mySumFiles[i],"_Clust")[[1]][1],EnrichmentDirection_ClusterID=strsplit(mySumFiles[i],"\\.")[[1]][5])
+    majorSummaryTable <- bind_rows(majorSummaryTable, sumTable)
+    
+    #for each Gene set, j, in the summary table:
+    for(j in 1:length(read.delim(mySumFiles[i])[,1])){
+      #the Gene Set j from the directory: Get the file prefix from the Summary file name + combine with gene set name + add ".txt" to the end.
+      geneSetReportfile=list.files(pattern=paste(strsplit(mySumFiles[i],"\\.")[[1]][1], (read.delim(mySumFiles[i]) %>% as.tibble() %>% select(GS) %>% c())[[1]][j],"report",strsplit(mySumFiles[i],"\\.")[[1]][5], "*.txt", sep = "."))
+      
+      if (!identical(geneSetReportfile, character(0))){
+      #if (!identical(geneSetReportfile, character(0)) && (geneSetReportfile != "Subordinate_Control_Cluster_19_ExpMatrix_Calvin_manual_genesets.neuromuscular junction.report.Control-19.12.txt")){
+          
+        gs.reporttable <-  read.delim(geneSetReportfile) %>% 
+          as.tibble() %>%
+          dplyr::filter(CORE_ENRICHMENT == "YES") %>% # filter out genes which are not in the Leading Edge.
+          add_column(
+              Comparison = strsplit(mySumFiles[i],"_Clust")[[1]][1], #Create a column for Comparison type, ex; 'Dominant_Control'
+              EnrichmentDirection_ClusterID = strsplit(mySumFiles[i],"\\.")[[1]][5], #Create a column for Enrichment direction, ex; 'Control-1'. This also shows the cluster id.
+              GS = (read.delim(mySumFiles[i]) %>% as.tibble() %>% select(GS) %>% c())[[1]][j] #Create a column for Gene Set name.
+            )
+        GSreportsTable <- bind_rows(GSreportsTable, gs.reporttable)
+        
+      }else{break}#closes ifelse for report file existance.
+    }#closes loop for j
+  }#closes loop for i
+  
+  majorSummaryTable <- majorSummaryTable %>% as.tibble() %>% mutate(pAdj.Nom=p.adjust(NOM.p.val,method="BH")) %>% arrange(pAdj.Nom)
+  sigtable <- majorSummaryTable %>% dplyr::filter(pAdj.Nom < 0.05) %>% unite(plotfilename, Comparison,GS,EnrichmentDirection_ClusterID,sep="*",remove = FALSE)
+  #Write the main table and only significant enrichments to separate files:
+  majorSummaryTable %>% write_tsv(file.path("All.Enrichment.stats.txt"))
+  sigtable %>% write_tsv(file.path("significant.Enrichments.txt"))
+  
+  sig.GSreportsTable=NULL
+  for(g in 1:dim(sigtable)[1]){
+    sig.g <- GSreportsTable %>% filter(Comparison == sigtable[g,]$Comparison, EnrichmentDirection_ClusterID == sigtable[g,]$EnrichmentDirection_ClusterID, GS == sigtable[g,]$GS) %>% select(-SYMBOL, -DESC) %>% separate(EnrichmentDirection_ClusterID, into=c("EnrichmentDirection","cluster"))
+    sig.GSreportsTable <- bind_rows(sig.GSreportsTable, sig.g)
+  }
+  
+  #return(majorSummaryTable)
+  return(sig.GSreportsTable)
+}
+
+
+
