@@ -3,14 +3,13 @@ library(Matrix)
 library(Seurat)
 library(dplyr)
 library(tidyverse)
-source("~/Dropbox/codes/Brainformatics/scripts/functions.R")# you can get the functions from https://github.com/yasinkaymaz/Brainformatics.git
-setwd("~/Documents/DulacLab/MDT_mn/")
+source(here::here("scripts/functions.R"))# you can get the functions from https://github.com/yasinkaymaz/Brainformatics.git
+
 load("mn.RObj")
 
 head(mn@meta.data)
 PlotClusterTree(mn)
-
-load("~/Documents/DulacLab/node.scores.Rdata")#node.scores <- AssessNodes(mn)    : Ran on the cluster. required too much memory
+node.scores <- AssessNodes(mn)
 print(node.scores)
 mn.merged <- mn
 #manually pick the nodes to merge: Decided with Adam and Eric.
@@ -34,22 +33,22 @@ save(mn.merged, file="mn.merged.RObj")#After merging Nodes: 44 46
 mmDatasets=c("Calvin_manual_genesets.gmt")
 i=1
 exp.Seu.obj=mn.merged
-setwd("~/Documents/DulacLab/MDT_mn.merged/")
+
 MDTclusters=c(1, 13, 15)
 for (ds in mmDatasets){
-  
+
   for (exp.Seu.obj in c(mn.merged)){
     i=i+1
     RunGSEAforClusters(SeuratObj = exp.Seu.obj, Cond1 = "Dominant", Cond2 = "Subordinate", Clusteridlist = MDTclusters, GeneSet = ds, outputDir = './')
     RunGSEAforClusters(SeuratObj = exp.Seu.obj, Cond1 = "Dominant", Cond2 = "Control", Clusteridlist = MDTclusters, GeneSet = ds, outputDir = './')
     RunGSEAforClusters(SeuratObj = exp.Seu.obj, Cond1 = "Subordinate", Cond2 = "Control", Clusteridlist = MDTclusters, GeneSet = ds, outputDir = './')
-    
-    Sig.Enrichment.ESTable <- SummarizeGSEAoutputs(GSEAoutputDir = "~/Documents/DulacLab/MDT_mn.merged/")
-    
+
+    Sig.Enrichment.ESTable <- SummarizeGSEAoutputs(GSEAoutputDir = "./")
+
     DEGs.dc <- RunDGEA(SeuratObj = exp.Seu.obj, Cond1 = "Dominant", Cond2 = "Control", Clusteridlist = MDTclusters)
     DEGs.sd <- RunDGEA(SeuratObj = exp.Seu.obj, Cond1 = "Dominant", Cond2 = "Subordinate", Clusteridlist = MDTclusters)
     DEGs.sc <- RunDGEA(SeuratObj = exp.Seu.obj, Cond1 = "Subordinate", Cond2 = "Control", Clusteridlist = MDTclusters)
-    
+
     #Combine results:
     DEGs <- dplyr::bind_rows(DEGs.dc, DEGs.sd, DEGs.sc, .id='id')
     DEGs$fdr <- p.adjust(DEGs$p_val, method = 'fdr')
@@ -60,8 +59,5 @@ for (ds in mmDatasets){
     merged <- inner_join(Sig.Enrichment.ESTable, DEGs, by = c("GENE" = "gene", "Comparison" = "id", "cluster" = "cluster" )) %>% as.data.frame()
     write_tsv(merged,file.path(paste("GSEA-DGE-mergedtables.significantEnrichments",i,"txt",sep=".")))
   }
-  
+
 }
-
-
-
