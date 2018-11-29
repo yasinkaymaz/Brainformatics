@@ -16,9 +16,9 @@ RunGSEAforClusters(SeuratObj = Seurat.obj, Cond1 = "Condition-1", Cond2 = "Condi
 I took the datasets created for mouse from http://ge-lab.org/gskb/
 
 #### An example Rscript to run the function:
-Please don't forget to modify the directories before running the script below. Also store the Seurat object file in the working directory. 
+Please don't forget to modify the directories before running the script below. Also store the Seurat object file in the working directory.
 
-```
+```{r}
 #Please change these according to your paths.
 
 workingDirectory='/n/home13/yasinkaymaz/GSEA/'
@@ -48,4 +48,29 @@ for (ds in mmDatasets){
     RunGSEAforClusters(SeuratObj = Neurons, Cond1 = "Subordinate", Cond2 = "Control", GeneSet = ds, outputDir = './')
 }
 
+```
+
+### Running the script on Odyssey
+
+First of all, put the above code in an R script: "scRNAseq-to-GSEA.R". Then, create a bash script with specific research requests which will submit a job to the scheduler. "job_script.sh":
+
+```{bash}
+#!/bin/bash
+#SBATCH -n 1
+#SBATCH --mem 96000
+#SBATCH -p serial_requeue
+#SBATCH -e mrf_err.%j.txt
+#SBATCH -o mrf_out.%j.txt
+#SBATCH -t 5-24:00
+
+module load R/3.4.2-fasrc01
+module load gcc/7.1.0-fasrc01
+cd /n/home13/yasinkaymaz/codes/test/GSEA
+
+Rscript ~/codes/test/GSEA/scRNAseq-to-GSEA.R
+```
+Then, submit the script to run the job:
+
+```{bash}
+sbatch job_script.sh
 ```
