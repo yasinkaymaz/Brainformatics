@@ -1,42 +1,36 @@
 #Please change these according to your paths.
 .libPaths(c(.libPaths(),"/n/home13/yasinkaymaz/biotools/Rlibs/"))
-workingDirectory='/n/home13/yasinkaymaz/LabSpace/testdata/DulacLab/GSEA/MDT_mn'
-source("https://raw.githubusercontent.com/yasinkaymaz/Brainformatics/master/scripts/functions.R")
+workingDirectory='~/Documents/DulacLab/SecondRound/GSEA/'
+source("~/Dropbox/codes/Brainformatics/scripts/functions.R")
 
 ### Run
 library(Matrix)
 library(Seurat)
 library(dplyr)
 library(tidyverse)
-load(paste(workingDirectory,"mn.RObj",sep=""))
-#load(paste(workingDirectory,"ACC.Neurons.RObj",sep=""))
+load(paste('~/Documents/DulacLab/SecondRound/',"mn.RObj",sep=""))
 
 setwd(workingDirectory)
 
-setwd("~/Documents/DulacLab/ACC_an/")
+mn = NormalizeData(mn)
 
-
-load("an.RObj")
-source("~/Dropbox/codes/Brainformatics/scripts/functions.R")
-setwd("~/Documents/DulacLab/MDT_mn/")
-load("mn.RObj")
 mmDatasets=c("Calvin_manual_genesets.gmt")
 i=1
 exp.Seu.obj=mn
 for (ds in mmDatasets){
-
+  
   for (exp.Seu.obj in c(mn)){
     i=i+1
-    #RunGSEAforClusters(SeuratObj = exp.Seu.obj, Cond1 = "Dominant", Cond2 = "Subordinate", GeneSet = ds, outputDir = './')
+    RunGSEAforClusters(SeuratObj = exp.Seu.obj, Clusteridlist = exp.Seu.obj@meta.data$seurat_clusters, Cond1 = "Dominant", Cond2 = "Subordinate", GeneSet = ds, outputDir = './')
     #RunGSEAforClusters(SeuratObj = exp.Seu.obj, Cond1 = "Dominant", Cond2 = "Control", GeneSet = ds, outputDir = './')
     #RunGSEAforClusters(SeuratObj = exp.Seu.obj, Cond1 = "Subordinate", Cond2 = "Control", GeneSet = ds, outputDir = './')
-
-    Sig.Enrichment.ESTable <- SummarizeGSEAoutputs(GSEAoutputDir = "~/Documents/DulacLab/MDT_mn/")
-
-    DEGs.dc <- RunDGEA(SeuratObj = exp.Seu.obj, Cond1 = "Dominant", Cond2 = "Control")
+    
+    Sig.Enrichment.ESTable <- SummarizeGSEAoutputs(GSEAoutputDir = workingDirectory)
+    
+    #DEGs.dc <- RunDGEA(SeuratObj = exp.Seu.obj, Cond1 = "Dominant", Cond2 = "Control")
     DEGs.sd <- RunDGEA(SeuratObj = exp.Seu.obj, Cond1 = "Dominant", Cond2 = "Subordinate")
-    DEGs.sc <- RunDGEA(SeuratObj = exp.Seu.obj, Cond1 = "Subordinate", Cond2 = "Control")
-
+    #DEGs.sc <- RunDGEA(SeuratObj = exp.Seu.obj, Cond1 = "Subordinate", Cond2 = "Control")
+    
     #Combine results:
     DEGs <- dplyr::bind_rows(DEGs.dc, DEGs.sd, DEGs.sc, .id='id')
     DEGs$fdr <- p.adjust(DEGs$p_val, method = 'fdr')
@@ -47,7 +41,7 @@ for (ds in mmDatasets){
     merged <- inner_join(Sig.Enrichment.ESTable, DEGs, by = c("GENE" = "gene", "Comparison" = "id", "cluster" = "cluster" )) %>% as.data.frame()
     write_tsv(merged,file.path(paste("GSEA-DGE-mergedtables.significantEnrichments",i,"txt",sep=".")))
   }
-
+  
 }
 
 identical(table,merged)
@@ -143,15 +137,15 @@ GSreportsTable <- NULL
 mySumFiles <- list.files(pattern="*SUMMARY.RESULTS.REPORT*")
 
 for (i in 1:length(mySumFiles)){
-
+  
   sumTable <- read.delim(mySumFiles[i]) %>% as.tibble() %>% add_column(Comparison=strsplit(mySumFiles[i],"_Clust")[[1]][1],EnrichmentDirection_ClusterID=strsplit(mySumFiles[i],"\\.")[[1]][5])
   majorSummaryTable <- bind_rows(majorSummaryTable, sumTable)
-
+  
   #for each Gene set, j, in the summary table:
   for(j in 1:length(read.delim(mySumFiles[i])[,1])){
     #the Gene Set j from the directory: Get the file prefix from the Summary file name + combine with gene set name + add ".txt" to the end.
     geneSetReportfile=list.files(pattern=paste(strsplit(mySumFiles[i],"\\.")[[1]][1], (read.delim(mySumFiles[i]) %>% as.tibble() %>% select(GS) %>% c())[[1]][j],"report",strsplit(mySumFiles[i],"\\.")[[1]][5], "*.txt", sep = "."))
-
+    
     #if (!identical(geneSetReportfile, character(0))){
     if (!identical(geneSetReportfile, character(0)) && (geneSetReportfile != "Subordinate_Control_Cluster_19_ExpMatrix_Calvin_manual_genesets.neuromuscular junction.report.Control-19.12.txt")){
       print(geneSetReportfile)
@@ -164,7 +158,7 @@ for (i in 1:length(mySumFiles)){
           GS = (read.delim(mySumFiles[i]) %>% as.tibble() %>% select(GS) %>% c())[[1]][j] #Create a column for Gene Set name.
         )
       GSreportsTable <- bind_rows(GSreportsTable, gs.reporttable)
-
+      
     }else{break}#closes ifelse for report file existance.
   }#closes loop for j
 }#closes loop for i

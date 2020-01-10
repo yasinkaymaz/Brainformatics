@@ -36,7 +36,6 @@ exp.Seu.obj=mn.merged
 
 MDTclusters=c(1, 13, 15)
 for (ds in mmDatasets){
-
   for (exp.Seu.obj in c(mn.merged)){
     i=i+1
     RunGSEAforClusters(SeuratObj = exp.Seu.obj, Cond1 = "Dominant", Cond2 = "Subordinate", Clusteridlist = MDTclusters, GeneSet = ds, outputDir = './')
@@ -59,5 +58,4 @@ for (ds in mmDatasets){
     merged <- inner_join(Sig.Enrichment.ESTable, DEGs, by = c("GENE" = "gene", "Comparison" = "id", "cluster" = "cluster" )) %>% as.data.frame()
     write_tsv(merged,file.path(paste("GSEA-DGE-mergedtables.significantEnrichments",i,"txt",sep=".")))
   }
-
 }

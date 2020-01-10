@@ -5,7 +5,8 @@ print(srcdir)
 RunGSEAforClusters <- function(SeuratObj, Cond1, Cond2, Clusteridlist, GeneSet='MousePath_GO_gmt.gmt', outputDir=getwd(), ...){
 
   if(missing(Clusteridlist)){
-    SeuratObj = SetAllIdent(SeuratObj, id = 'clusters')
+    #SeuratObj = SetAllIdent(SeuratObj, id = 'clusters')
+    Idents(SeuratObj) =  'cluster.states'
     clusters = sort(unique(as.numeric(SeuratObj@meta.data$tree.ident)))
   }else{
     clusters = Clusteridlist
@@ -31,7 +32,8 @@ RunDGEA <- function(SeuratObj, Cond1, Cond2, Clusteridlist, outputDir=getwd(), .
   #BiocManager::install("MAST")
   #library(scater)
   library(dplyr)
-  SeuratObj = SetAllIdent(SeuratObj, id = 'cluster.states')
+  #SeuratObj = SetAllIdent(SeuratObj, id = 'cluster.states')
+  Idents(SeuratObj) =  'cluster.states'
   DEGs = list()
   #clusters = sort(unique(as.numeric(SeuratObj@meta.data$tree.ident)))
   clusters = Clusteridlist
@@ -51,15 +53,13 @@ RunDGEA <- function(SeuratObj, Cond1, Cond2, Clusteridlist, outputDir=getwd(), .
   return(DEGs)
 }
 
-
-
 CreateGSEAinput <- function(SeuratObj, Cond1, Cond2, outputDir=getwd(), clusterid, filePrefix, ...){
 
   ident.1 = paste(Cond1,"-",clusterid, sep = '')
   ident.2 = paste(Cond2,'-',clusterid, sep = '')
   #Subset expression data into cells from two conditions:
-  sub.data.id1 <- as.data.frame(as.matrix(x = SeuratObj@data[, WhichCells(object = SeuratObj, ident = ident.1)]))
-  sub.data.id2 <- as.data.frame(as.matrix(x = SeuratObj@data[, WhichCells(object = SeuratObj, ident = ident.2)]))
+  sub.data.id1 <- as.data.frame(as.matrix(x = SeuratObj[["RNA"]]@data[, WhichCells(object = SeuratObj, idents = ident.1)]))
+  sub.data.id2 <- as.data.frame(as.matrix(x = SeuratObj[["RNA"]]@data[, WhichCells(object = SeuratObj, idents = ident.2)]))
   #Store cell numbers in each condition here:
   c1 <- dim(sub.data.id1)[2]
   c2 <- dim(sub.data.id2)[2]
@@ -88,7 +88,6 @@ CreateGSEAinput <- function(SeuratObj, Cond1, Cond2, outputDir=getwd(), clusteri
     linex <- paste(linex,line3[i],sep =" ")}
   write.table(linex,file=paste(filePrefix,".cls",sep=""), sep=" ", quote=FALSE,col.names=FALSE,row.names=FALSE , append=TRUE)
 }
-
 
 RunGSEA <- function(InputPrefix, GeneSet, outputDir=getwd(), ...){
   GSEA.program.location <- paste(srcdir,"/GSEA.1.1.R",sep="")
@@ -128,7 +127,6 @@ RunGSEA <- function(InputPrefix, GeneSet, outputDir=getwd(), ...){
   )
 
 }
-
 
 SummarizeGSEAoutputs <- function(GSEAoutputDir="./"){
   #This function returns the table of all Enrichment results with corrected p-values.
