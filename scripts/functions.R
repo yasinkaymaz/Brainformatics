@@ -41,7 +41,7 @@ RunDGEA <- function(SeuratObj, Cond1, Cond2, Clusteridlist, outputDir=getwd(), .
   for (i in clusters) {
     ident.1 = paste(Cond1,"-",i, sep = '')
     ident.2 = paste(Cond2,'-',i, sep = '')
-    a =FindMarkers(SeuratObj, ident.1 = ident.1, ident.2 = ident.2, test.use = 'MAST', only.pos = FALSE, latent.vars = c('nUMI', 'percent.mito'), logfc.threshold = 0.1, min.pct = 0.05)
+    a =FindMarkers(SeuratObj, ident.1 = ident.1, ident.2 = ident.2, test.use = 'negbinom', only.pos = FALSE, latent.vars = c('nCount_RNA','percent.mito','batch'), logfc.threshold = 0.1, min.pct = 0.1, min.cells.group = 1)
     a$gene = rownames(a)
     a$cluster = paste(i,sep = '')
     DEGs = bind_rows(DEGs,a)
