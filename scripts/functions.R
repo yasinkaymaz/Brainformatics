@@ -41,7 +41,7 @@ RunDGEA <- function(SeuratObj, Cond1, Cond2, Clusteridlist, outputDir=getwd(), .
   for (i in clusters) {
     ident.1 = paste(Cond1,"-",i, sep = '')
     ident.2 = paste(Cond2,'-',i, sep = '')
-    a =FindMarkers(SeuratObj, ident.1 = ident.1, ident.2 = ident.2, test.use = 'negbinom', only.pos = FALSE, latent.vars = c('nCount_RNA','percent.mito','batch'), logfc.threshold = 0.1, min.pct = 0.1, min.cells.group = 1)
+    a = FindMarkers(SeuratObj, ident.1 = ident.1, ident.2 = ident.2, test.use = 'negbinom', only.pos = FALSE, latent.vars = c('nCount_RNA','percent.mito','batch'), logfc.threshold = 0.1, min.pct = 0.1, min.cells.group = 1)
     a$gene = rownames(a)
     a$cluster = paste(i,sep = '')
     DEGs = bind_rows(DEGs,a)
@@ -100,7 +100,8 @@ RunGSEA <- function(InputPrefix, GeneSet, outputDir=getwd(), ...){
   GSEA(   # Input/Output Files :-------------------------------------------
           input.ds =  paste(outputDir,"/",InputPrefix,".gct",sep = ""),           # Input gene expression Affy dataset file in RES or GCT format
           input.cls = paste(outputDir,"/",InputPrefix,".cls",sep = ""),           # Input class vector (phenotype) file in CLS format
-          gs.db =   paste(srcdir,"/../GeneSetDatabases/",GeneSet,sep=""),         # Gene set database in GMT format
+          #gs.db =   paste(srcdir,"/../GeneSetDatabases/",GeneSet,sep=""),         # Gene set database in GMT format
+          gs.db =   paste(outputDir, "/", GeneSet, sep=""),         # Gene set database in GMT format
           output.directory      = paste(outputDir,"/",sep = ""),        # Directory where to store output and results (default: "")
           #  Program parameters :-------------------------------------------------------------------------------------------------------------------------
           doc.string            = doc.STRING,   # Documentation string used as a prefix to name result files (default: "GSEA.analysis")
